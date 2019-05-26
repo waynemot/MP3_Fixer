@@ -12,6 +12,7 @@ import java.util.logging.Logger;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import com.mpatric.mp3agic.*;
+import java.util.ArrayList;
 import java.util.Stack;
 import java.util.Vector;
 
@@ -258,6 +259,7 @@ public class Mp3Fixer extends javax.swing.JFrame {
         
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
+            @Override
             public void run() {
                 // Create the JFrame object and make it visible
                 final Mp3Fixer mp3fixer = new Mp3Fixer();
@@ -297,7 +299,7 @@ public class Mp3Fixer extends javax.swing.JFrame {
         //JOptionPane.showMessageDialog(rootPane, "This is a file that I can read: "+file);
         try {
             String title, album, artist;
-            String filename = file.substring(file.lastIndexOf(File.separator));
+            String filename = file.substring(file.lastIndexOf(File.separator)+1);
             String path = file.substring(0, file.lastIndexOf(File.separator));
             Mp3File requested_file = new Mp3File(file);
             ID3v1 v1tag = requested_file.getId3v1Tag();
@@ -315,15 +317,11 @@ public class Mp3Fixer extends javax.swing.JFrame {
               values[0][0] = filename;
               values[0][1] = path;
               values[0][2] = title;
-              values[0][3] = album;
-              values[0][4] = artist;
+              values[0][3] = artist;
+              values[0][4] = album;
               applyData(values);
             }
-        } catch (IOException ex) {
-            Logger.getLogger(Mp3Fixer.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (UnsupportedTagException ex) {
-            Logger.getLogger(Mp3Fixer.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (InvalidDataException ex) {
+        } catch (IOException | UnsupportedTagException | InvalidDataException ex) {
             Logger.getLogger(Mp3Fixer.class.getName()).log(Level.SEVERE, null, ex);
         }
         
@@ -344,30 +342,64 @@ public class Mp3Fixer extends javax.swing.JFrame {
 
     private void MultipleMp3Files(String file) {
         System.out.println("The function to handle multiple files fired: "+file);
-        JOptionPane.showMessageDialog(rootPane, "This is a directory that I will traverse: "+file);
+        //JOptionPane.showMessageDialog(rootPane, "This is a directory that I will traverse: "+file);
         java.io.File directory = new File(file);
         String[] directory_list = directory.list();
-        int file_count = 0;
-        Stack file_stack = new Stack();
-        for(int i = 0; i < directory_list.length; i++) {
-            File tmp_file = new File(directory_list[i]);
+        ArrayList<String> file_stack = new ArrayList<>();
+        for (String directory_list1 : directory_list) {
+            File tmp_file = new File(directory_list1);
             if (tmp_file.isFile()) {
-                file_stack.push(directory_list[i]);
+                file_stack.add(directory_list1);
+            } else if (tmp_file.isDirectory()) {
+                descend_directory(directory_list1);
             }
         }
-        
-    }
-    
-    class myStack {
-        Vector vect = new Vector();
-        public myStack() {
-            
+        if(!file_stack.isEmpty()) {
+            int table_row = 0;
+            String[][] table_rows = new String[file_stack.size()][5];
+            for(String file_stack_item : file_stack) {
+                String filename = file.substring(file.lastIndexOf(File.separator)+1);
+                String path = file.substring(0, file.lastIndexOf(File.separator));
+                Mp3File requested_file = null;
+                try {
+                    requested_file = new Mp3File(file_stack_item);
+                } catch (IOException | UnsupportedTagException | InvalidDataException ex) {
+                    Logger.getLogger(Mp3Fixer.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                ID3v1 v1tag = null;
+                if(requested_file != null)
+                    v1tag = requested_file.getId3v1Tag();
+                if(v1tag != null) {
+                    table_rows[table_row][2] = v1tag.getTitle();
+                    table_rows[table_row][3] = v1tag.getArtist();
+                    table_rows[table_row][4] = v1tag.getAlbum();
+                }
+                table_rows[table_row][0] = filename;
+                table_rows[table_row][1] = path;
+                
+                // last
+                table_row++;
+            }
         }
-        public void add(File f) {
-            
-        }
     }
-            
+    private ArrayList descend_directory(String file) {
+        ArrayList<String> ret_list = new ArrayList<>();
+        File f = new File(file);
+        if (f.exists() && f.canRead()) {
+            if(f.isFile()) {
+                ret_list.add(file);
+            } else {
+                for(int i = 0; i < f.list().length; i++) {
+                    if (new java.io.File(f.list()[i]).isDirectory()) {
+                        ArrayList tmp_list = descend_directory(f.list()[i]);
+                        ret_list.addAll(tmp_list);
+                    }
+                }
+            }
+        }
+        return ret_list;
+    }
+     
     
     //Mp3File mp3file = new Mp3File("src/test/resources/v1andv23tagswithalbumimage.mp3");
 
