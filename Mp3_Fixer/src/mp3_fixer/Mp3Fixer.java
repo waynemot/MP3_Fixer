@@ -15,6 +15,7 @@ import com.mpatric.mp3agic.*;
 import java.util.ArrayList;
 import java.util.Stack;
 import java.util.Vector;
+import javax.swing.table.DefaultTableModel;
 
 /**
  *
@@ -330,12 +331,25 @@ public class Mp3Fixer extends javax.swing.JFrame {
     private void applyData(String[][] rows) {
         if (rows.length > 0) {
             int row_idx = 0;
+            int current_row_count = currentFixer.mp3_FilesTable.getModel().getRowCount();
+            currentFixer.mp3_FilesTable.setAutoCreateColumnsFromModel(true);
+            DefaultTableModel model = (DefaultTableModel) currentFixer.mp3_FilesTable.getModel();
+            if (current_row_count < rows.length) {
+                for(int i = current_row_count; i < rows.length; i++) {
+                    model.addRow(new Object[]{"","","","",""});
+                }
+            }
+            else if (current_row_count > rows.length) {
+                for(int i = current_row_count; i > rows.length; i--) {
+                    model.removeRow(0);
+                }
+            }
             for (; row_idx < rows.length; row_idx++) {
-                currentFixer.mp3_FilesTable.getModel().setValueAt(rows[row_idx][0], 1, 0);
-                currentFixer.mp3_FilesTable.getModel().setValueAt(rows[row_idx][1], 1, 1);
-                currentFixer.mp3_FilesTable.getModel().setValueAt(rows[row_idx][2], 1, 2);
-                currentFixer.mp3_FilesTable.getModel().setValueAt(rows[row_idx][3], 1, 3);
-                currentFixer.mp3_FilesTable.getModel().setValueAt(rows[row_idx][4], 1, 4);
+                currentFixer.mp3_FilesTable.getModel().setValueAt(rows[row_idx][0], row_idx, 0);
+                currentFixer.mp3_FilesTable.getModel().setValueAt(rows[row_idx][1], row_idx, 1);
+                currentFixer.mp3_FilesTable.getModel().setValueAt(rows[row_idx][2], row_idx, 2);
+                currentFixer.mp3_FilesTable.getModel().setValueAt(rows[row_idx][3], row_idx, 3);
+                currentFixer.mp3_FilesTable.getModel().setValueAt(rows[row_idx][4], row_idx, 4);
             }
         }
     }
@@ -345,21 +359,37 @@ public class Mp3Fixer extends javax.swing.JFrame {
         //JOptionPane.showMessageDialog(rootPane, "This is a directory that I will traverse: "+file);
         java.io.File directory = new File(file);
         String[] directory_list = directory.list();
+        String path = null;
+        try {
+            path = directory.getCanonicalPath();
+        }
+        catch(IOException ioe) {
+            Logger.getLogger(Mp3Fixer.class.getName()).log(Level.SEVERE, ioe.getMessage());
+        }
         ArrayList<String> file_stack = new ArrayList<>();
         for (String directory_list1 : directory_list) {
-            File tmp_file = new File(directory_list1);
-            if (tmp_file.isFile()) {
-                file_stack.add(directory_list1);
-            } else if (tmp_file.isDirectory()) {
-                descend_directory(directory_list1);
+            File tmp_file = null;
+            if (directory_list1.endsWith(".mp3"))
+                tmp_file = new File(path+"/"+directory_list1);
+            else
+                continue;
+            if (tmp_file != null && tmp_file.exists()) {
+                if(tmp_file.isFile()) {// && tmp_file.isFile() && tmp_file.exists()) {
+                    file_stack.add(path+"/"+directory_list1);
+                }
+                else if (tmp_file.isDirectory()) {
+                    descend_directory(path, directory_list1);
+                }
+                else
+                    Logger.getLogger(Mp3Fixer.class.getName()).log(Level.SEVERE,"Damn, file doesn't exist...");
             }
         }
         if(!file_stack.isEmpty()) {
             int table_row = 0;
             String[][] table_rows = new String[file_stack.size()][5];
             for(String file_stack_item : file_stack) {
-                String filename = file.substring(file.lastIndexOf(File.separator)+1);
-                String path = file.substring(0, file.lastIndexOf(File.separator));
+                String filename = file_stack_item.substring(file_stack_item.lastIndexOf(File.separator)+1);
+                String file_path = file_stack_item.substring(0, file_stack_item.lastIndexOf(File.separator));
                 Mp3File requested_file = null;
                 try {
                     requested_file = new Mp3File(file_stack_item);
@@ -375,23 +405,26 @@ public class Mp3Fixer extends javax.swing.JFrame {
                     table_rows[table_row][4] = v1tag.getAlbum();
                 }
                 table_rows[table_row][0] = filename;
-                table_rows[table_row][1] = path;
+                table_rows[table_row][1] = file_path;
                 
                 // last
                 table_row++;
             }
+            if(table_rows.length > 0) {
+                applyData(table_rows);
+            }
         }
     }
-    private ArrayList descend_directory(String file) {
+    private ArrayList descend_directory(String root_path, String file) {
         ArrayList<String> ret_list = new ArrayList<>();
         File f = new File(file);
         if (f.exists() && f.canRead()) {
             if(f.isFile()) {
-                ret_list.add(file);
+                ret_list.add(root_path+"/"+file);
             } else {
                 for(int i = 0; i < f.list().length; i++) {
                     if (new java.io.File(f.list()[i]).isDirectory()) {
-                        ArrayList tmp_list = descend_directory(f.list()[i]);
+                        ArrayList tmp_list = descend_directory(root_path,f.list()[i]);
                         ret_list.addAll(tmp_list);
                     }
                 }
