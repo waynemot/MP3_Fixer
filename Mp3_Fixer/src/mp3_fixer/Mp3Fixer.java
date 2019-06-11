@@ -371,6 +371,8 @@ public class Mp3Fixer extends javax.swing.JFrame {
             File tmp_file = null;
             if (directory_list1.endsWith(".mp3"))
                 tmp_file = new File(path+"/"+directory_list1);
+            else if ((new File(directory_list1)).isDirectory())
+                tmp_file = new File(path+"/"+directory_list1);
             else
                 continue;
             if (tmp_file != null && tmp_file.exists()) {
@@ -378,12 +380,14 @@ public class Mp3Fixer extends javax.swing.JFrame {
                     file_stack.add(path+"/"+directory_list1);
                 }
                 else if (tmp_file.isDirectory()) {
-                    descend_directory(path, directory_list1);
+                    ArrayList<String> flist = descend_directory(path, directory_list1);
+                    file_stack.addAll(flist);
                 }
                 else
                     Logger.getLogger(Mp3Fixer.class.getName()).log(Level.SEVERE,"Damn, file doesn't exist...");
             }
         }
+        System.out.println("DEBUG: finished descent found "+file_stack.size()+" entries");
         if(!file_stack.isEmpty()) {
             int table_row = 0;
             String[][] table_rows = new String[file_stack.size()][5];
@@ -415,7 +419,8 @@ public class Mp3Fixer extends javax.swing.JFrame {
             }
         }
     }
-    private ArrayList descend_directory(String root_path, String file) {
+    private ArrayList<String> descend_directory(String root_path, String file) {
+        System.out.println("DEBUG: descend_dir(): root_path: "+root_path+" file: "+file);
         ArrayList<String> ret_list = new ArrayList<>();
         File f = new File(file);
         if (f.exists() && f.canRead()) {
@@ -424,12 +429,13 @@ public class Mp3Fixer extends javax.swing.JFrame {
             } else {
                 for(int i = 0; i < f.list().length; i++) {
                     if (new java.io.File(f.list()[i]).isDirectory()) {
-                        ArrayList tmp_list = descend_directory(root_path,f.list()[i]);
+                        ArrayList<String> tmp_list = descend_directory(root_path,f.list()[i]);
                         ret_list.addAll(tmp_list);
                     }
                 }
             }
         }
+        System.out.println("DEBUG: descend_dir() returning "+ret_list.size()+" records");
         return ret_list;
     }
      
