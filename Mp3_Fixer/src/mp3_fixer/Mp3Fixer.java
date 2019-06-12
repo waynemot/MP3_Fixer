@@ -368,23 +368,13 @@ public class Mp3Fixer extends javax.swing.JFrame {
         }
         ArrayList<String> file_stack = new ArrayList<>();
         for (String directory_list1 : directory_list) {
-            File tmp_file = null;
-            if (directory_list1.endsWith(".mp3"))
-                tmp_file = new File(path+"/"+directory_list1);
-            else if ((new File(directory_list1)).isDirectory())
-                tmp_file = new File(path+"/"+directory_list1);
-            else
-                continue;
-            if (tmp_file != null && tmp_file.exists()) {
-                if(tmp_file.isFile()) {// && tmp_file.isFile() && tmp_file.exists()) {
-                    file_stack.add(path+"/"+directory_list1);
-                }
-                else if (tmp_file.isDirectory()) {
-                    ArrayList<String> flist = descend_directory(path, directory_list1);
-                    file_stack.addAll(flist);
-                }
-                else
-                    Logger.getLogger(Mp3Fixer.class.getName()).log(Level.SEVERE,"Damn, file doesn't exist...");
+            File tmp_file = new File(path+File.separator+directory_list1);
+            if(tmp_file.isFile() && tmp_file.getName().endsWith(".mp3")) {
+                file_stack.add(path+"/"+directory_list1);
+            }
+            else if (tmp_file.isDirectory()) {
+                ArrayList<String> flist = descend_directory(path, directory_list1);
+                file_stack.addAll(flist);
             }
         }
         System.out.println("DEBUG: finished descent found "+file_stack.size()+" entries");
@@ -422,15 +412,22 @@ public class Mp3Fixer extends javax.swing.JFrame {
     private ArrayList<String> descend_directory(String root_path, String file) {
         System.out.println("DEBUG: descend_dir(): root_path: "+root_path+" file: "+file);
         ArrayList<String> ret_list = new ArrayList<>();
-        File f = new File(file);
+        File f = new File(root_path+File.separator+file);
         if (f.exists() && f.canRead()) {
-            if(f.isFile()) {
-                ret_list.add(root_path+"/"+file);
-            } else {
+            if(f.isFile() && f.getName().endsWith(".mp3")) {
+                ret_list.add(root_path+File.separator+file);
+            } 
+            else if (f.isDirectory()) {
                 for(int i = 0; i < f.list().length; i++) {
-                    if (new java.io.File(f.list()[i]).isDirectory()) {
-                        ArrayList<String> tmp_list = descend_directory(root_path,f.list()[i]);
+                    File ff = new File(f.getAbsolutePath()+File.separator+f.list()[i]);
+                    if (ff.isDirectory()) {
+                        ArrayList<String> tmp_list = descend_directory(f.getAbsolutePath(),f.list()[i]);
                         ret_list.addAll(tmp_list);
+                    }
+                    else if (ff.isFile()) {
+                        if (f.list()[i].endsWith(".mp3")) {
+                            ret_list.add(f.getAbsolutePath()+File.separator+f.list()[i]);
+                        }
                     }
                 }
             }
